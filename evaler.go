@@ -12,10 +12,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var whitespace_rx = regexp.MustCompile(`\s+`)
-var fp_rx = regexp.MustCompile(`(\d+(?:\.\d+)?)`) // simple fp number
+//var fp_rx = regexp.MustCompile(`(\d+(?:\.\d+)?)`) // simple fp number
+var fp_rx = regexp.MustCompile(`([\dmhdys(now)(day)(year)(min)(sec)(mon)(dec)(cen)(hr)(week)]+(?:\.\d+)?)`)
 var operators = "-+**/<>"
 
 // prec returns the operator's precedence
@@ -170,14 +172,77 @@ func evaluatePostfix(postfix []string) (*big.Rat, error) {
 // trailing spaces, then splits on spaces
 //
 func tokenise(expr string) []string {
+	
 	spaced := fp_rx.ReplaceAllString(expr, " ${1} ")
 	symbols := []string{"(", ")"}
 	for _, symbol := range symbols {
 		spaced = strings.Replace(spaced, symbol, fmt.Sprintf(" %s ", symbol), -1)
 	}
 	stripped := whitespace_rx.ReplaceAllString(strings.TrimSpace(spaced), "|")
-	return strings.Split(stripped, "|")
+	
+	tokens := strings.Split(stripped, "|")
+
+	fmt.Println(tokens)
+	handleSpecialVariables(tokens)
+
+	fmt.Println(tokens)
+	return tokens
 }
+//dmhdys(now)(day)(year)(min)(sec)(mon)(dec)(cen)(hr)(week)
+func handleSpecialVariables(tokens []string) {
+	var regexNum = regexp.MustCompile(`(\d+(?:\.\d+)?)`)
+	var specialCharMap = map[string] float64{
+    "s":  1,
+    "sec": 1,
+    "m": 60,
+    "min": 60,
+    "h": 60*60,
+	"hr": 60*60,
+	"d":  60*60*24,
+    "day": 60*60*24,
+    "week": 60*60*24*7,
+    "mon": 60*60*24*30,
+    "y": 60*60*24*365,
+	"year": 60*60*24*365,
+    "dec": 60*60*24*365*100,
+    "now": float64(time.Now().Unix()),
+	}
+	for i, token := range tokens {
+		//var associatedNum = regexSpecialChar.Split(token, -1)
+		//fmt.Println(associatedNum)
+		//input: 7d
+		//need to split into 7 d 
+		//then substitutte 7 60*60*24
+		//then 7*60*60*24
+		//then "7*60*60*24"
+		var specialChar = regexNum.ReplaceAllString(token,"")//remove numerical value from token
+		specialChar = strings.Trim(specialChar, " ")
+		if val, ok := specialCharMap[specialChar]; ok {
+			var nums = regexNum.FindAllString(token,-1)
+			if len(nums) == 1 { 
+				var associatedNumFloat, err = strconv.ParseFloat(nums[0],64)
+				if err!=nil{
+					fmt.Println("err")
+				}
+				tokens[i] = strconv.FormatFloat(associatedNumFloat * val, 'f', 10, 64 )
+			} else {
+				tokens[i] = strconv.FormatFloat(val, 'f', 10, 64 )
+			}
+			
+		}
+
+	}
+
+}
+
+func convertVariableToNum(valToChange string, tokenVal int) string{
+	var valToChangeInt, err = strconv.ParseFloat(valToChange,64)
+	if err!=nil{
+		fmt.Println("err")
+	}
+	return strconv.FormatFloat(float64(tokenVal)*valToChangeInt, 'f', 10, 64 ) 
+}
+
 
 // Eval takes an infix string arithmetic expression, and evaluates it
 //

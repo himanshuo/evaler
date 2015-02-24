@@ -1,3 +1,4 @@
+
 package evaler_test
 
 import (
@@ -31,6 +32,14 @@ var testsEval = []struct {
 	{"2 ** 3", big.NewRat(8, 1), true},           // exponent 1
 	{"9.0**0.5", big.NewRat(3, 1), true},         // exponent 2
 	{"1.23", big.NewRat(123, 100), true},
+	{"1.23+1", big.NewRat(223, 100), true},
+	{"1d", big.NewRat(86400, 1), true},
+	{"1d+1m", big.NewRat(86400+2592000, 1), true},
+	{"2s+6h-6w", big.NewRat(223, 1), true},
+	{"1y+6m", big.NewRat(223, 1), true},
+	{"1.5y", big.NewRat(223, 1), true},
+	{"1+ww", nil, false},
+	{"1 * 8d", big.NewRat(8*86400, 1), true},
 }
 
 func TestEval(t *testing.T) {
